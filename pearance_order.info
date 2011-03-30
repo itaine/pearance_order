@@ -1,0 +1,8 @@
+name = Pearance Order
+description = Pearance site order system
+dependencies[] = hosting_site
+dependencies[] = uc_cart
+dependencies[] = uc_hosting_products
+
+package = Pearance
+core = 6.x

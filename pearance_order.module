@@ -1,0 +1,143 @@
+<?php
+
+/**
+ * Form Alterations
+ */
+function pearance_order_form_alter($form, $form_state, $form_id) {
+  /**
+   * Hosting products site info form alterations.
+   */
+  if ($form_id == 'uc_hosting_products_site_info_form') {
+    $node = $form['#node'];
+    
+    drupal_set_title('Setup your site!');
+    
+    // Unset some of this form's elements
+    unset($form['platform_description']);
+    unset($form['profile_description']);
+    unset($form['site_language_description']);
+    unset($form['title_description']);
+    unset($form['client_description']);
+    unset($form['db_server_description']);    
+    
+    
+    // Set some default values and hide some form data
+    $form['title']['#description'] = 'eg. yourdomain.com';
+    $form['profile']['#default_value'] = '159';
+    $form['profile']['#title'] = NULL;
+    $form['platform']['#default_value'] = '80';  
+    $form['platform']['#type'] = 'hidden';
+    $form['site_language']['#type'] = 'hidden';
+    
+    
+    // Add theme options to the site form
+    _hosting_site_field($form, $node, 'theme', array(
+      '#type' => 'radios',
+      '#title' => t('Themes'),
+      '#description' => t('Select your desired theme. You can change your theme at anytime.'),
+      '#required' => TRUE,
+      '#tree' => TRUE,
+      '#weight' => 0,
+      '#options' => array(
+        'stark' => t('Stark'),
+        'garland' => t('Garland'),
+        'bartik' => t('Bartik'),
+      ),
+      '#default_value' => $form['#node']->theme ? $form['#node']->theme : 'stark',
+    ));
+    
+    // Site form redirection
+    $form['#redirect'] = 'cart/checkout';
+  
+    // Add a submit button to this form
+    $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Next'),
+    );
+    
+    //dsm($form);
+    //echo '<pre>'; print_r($form); echo '</pre>';
+    return $form;
+  }
+  
+  
+  /**
+   * Ubercart checkout form alterations
+   */
+  if ($form_id == 'uc_cart_checkout_form') {
+    
+    //echo '<pre>'; print_r($form); echo '</pre>';
+    
+    $form['panes']['customer']['new_account']['#type'] = NULL;
+    $form['panes']['customer']['new_account']['#title'] = NULL;
+    $form['panes']['customer']['new_account']['name']['#required'] = TRUE;
+    $form['panes']['customer']['new_account']['pass']['#required'] = TRUE;
+    $form['panes']['customer']['new_account']['pass_confirm']['#required'] = TRUE;
+    $form['panes']['customer']['new_account']['pass_confirm']['#size'] = 32;
+    
+    //dsm($form);
+    return $form;
+  }
+}
+
+
+/** 
+* Implementation of hook_insert()
+*/
+function pearance_order_insert($node) {
+  if ($node->theme) {
+    db_query("INSERT INTO {pearance_order} (vid, nid, theme) VALUES (%d, %d, '%s')", $node->vid, $node->nid, $node->theme);
+  }
+}
+/**
+* Implementation of hook_update()
+*/
+function pearance_order_update($node) {
+  db_query("UPDATE {pearance_order} SET theme = '%s' WHERE nid = %d", $node->theme, $node->nid);
+}
+/**
+* Implementation of hook_delete()
+*/
+function pearance_order_delete($node) {
+  db_query("DELETE FROM {pearance_order} WHERE nid=%d", $node->nid);
+}
+/**
+* Implementation of hook_delete_revision()
+*/
+function pearance_order_delete_revision($node) {
+  db_query("DELETE FROM {pearance_order} WHERE vid=%d", $node->vid);
+}
+/** 
+* Implementation of hook_nodeapi()
+*/
+function pearance_order_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+  if ($node->type == 'site') {
+    switch ($op) {
+    case 'insert':
+        pearance_order_insert($node);
+        break;
+      case 'update':
+        pearance_order_update($node);
+        break;
+      case 'delete' :
+        pearance_order_delete($node);
+        break;
+      case 'delete revision':
+        pearance_order_delete_revision($node);
+        break;
+      case 'validate' :
+        if (!$node->theme && $task->task_type == 'install') {
+          form_set_error('theme', t('You must select a theme!'));
+        }
+        break;
+      case 'load':
+        $additions['theme'] = db_result(db_query("SELECT theme FROM {pearance_order} WHERE vid=%d", $node->vid));
+        return $additions;
+        break;
+    }
+  }
+}
+
+
+
+
